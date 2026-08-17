@@ -1,1 +1,1 @@
-*.safetensors filter=lfs diff=lfs merge=lfs -text
+bert_phishing/bert_phishing_model/model.safetensors filter=lfs diff=lfs merge=lfs -text
