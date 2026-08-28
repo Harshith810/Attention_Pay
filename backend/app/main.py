@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import get_settings
-
+from backend.app.config import get_settings
+from backend.app.routes.phishing import router as phishing_router
 
 settings = get_settings()
 
@@ -19,6 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(phishing_router)
 
 @app.get("/health")
 def health_check() -> dict[str, str]:
