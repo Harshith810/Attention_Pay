@@ -1,0 +1,20 @@
+{
+    "model": "bert-base-uncased",
+    "max_length": 160,
+    "test_samples": 156767,
+    "accuracy": 0.9856411106929392,
+    "precision_legitimate": 0.9816896166728694,
+    "recall_legitimate": 0.9903014679197587,
+    "f1_legitimate": 0.9859767379562544,
+    "roc_auc": 0.9983008249527022,
+    "confusion_matrix": [
+        [
+            75382,
+            1476
+        ],
+        [
+            775,
+            79134
+        ]
+    ]
+}

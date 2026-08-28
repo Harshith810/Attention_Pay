@@ -1,3 +1,4 @@
 .bert_phishing_model/
 __pycache__/
 *.pyc
+.attentionPay_bert/
