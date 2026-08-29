@@ -19,6 +19,10 @@ from backend.app.services.layer1_security_service import (
     run_layer1_security_checks,
 )
 
+from backend.app.dependencies.stage_access import (
+    require_stage2_access,
+)
+
 
 router = APIRouter(
     prefix="/api/v1/simulate",
@@ -33,6 +37,9 @@ router = APIRouter(
 def simulate_transaction(
     request: TransactionScenarioRequest,
     db: Session = Depends(get_db),
+    stage2_access_token: str = Depends(
+        require_stage2_access
+    ),
 ):
     scenario = request.scenario
 
@@ -151,6 +158,9 @@ def simulate_transaction(
 def process_transaction(
     transaction_id: str,
     db: Session = Depends(get_db),
+    stage2_access_token: str = Depends(
+        require_stage2_access
+    ),
 ):
     """
     Retrieve the transaction from PostgreSQL and

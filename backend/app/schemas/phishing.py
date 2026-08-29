@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -8,6 +10,10 @@ class URLAnalysisRequest(BaseModel):
 class URLAnalysisResponse(BaseModel):
     prediction: str
     confidence: float
+
     phishing_probability: float
     legitimate_probability: float
+
     blocked: bool
+
+    stage2_access_token: Optional[str] = None

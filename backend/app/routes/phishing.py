@@ -5,6 +5,9 @@ from backend.app.schemas.phishing import (
     URLAnalysisResponse,
 )
 from backend.app.services.bert_service import BERTService
+from backend.app.services.stage_flow_service import (
+    stage_flow_service,
+)
 
 
 router = APIRouter(
@@ -15,13 +18,34 @@ router = APIRouter(
 bert_service = BERTService()
 
 
-@router.post("/url", response_model=URLAnalysisResponse)
-def analyze_url(request: URLAnalysisRequest):
-    result = bert_service.predict(request.url)
+@router.post(
+    "/url",
+    response_model=URLAnalysisResponse,
+)
+def analyze_url(
+    request: URLAnalysisRequest,
+):
+    result = bert_service.predict(
+        request.url
+    )
 
-    blocked = result["prediction"] == "PHISHING"
+    blocked = (
+        result["prediction"]
+        == "PHISHING"
+    )
+
+    stage2_access_token = None
+
+    if not blocked:
+        stage2_access_token = (
+            stage_flow_service
+            .create_stage2_access()
+        )
 
     return {
         **result,
         "blocked": blocked,
+        "stage2_access_token": (
+            stage2_access_token
+        ),
     }
