@@ -4,3 +4,5 @@ pydantic-settings
 python-dotenv
 torch
 transformers
+sqlalchemy
+psycopg2-binary
