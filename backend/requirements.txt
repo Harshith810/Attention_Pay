@@ -6,3 +6,7 @@ torch
 transformers
 sqlalchemy
 psycopg2-binary
+# TabTransformer fraud-prediction API
+numpy
+scikit-learn>=1.9.1
+joblib
