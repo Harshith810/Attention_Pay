@@ -155,6 +155,197 @@ def safe_location_pair():
 
 
 # -------------------------------------------------
+# DEMO LOCATION DATA
+# -------------------------------------------------
+
+# Recognizable locations used only for the transaction-location
+# simulation. Coordinates are used by the existing Layer 1
+# impossible-travel calculation and can also be displayed by
+# the frontend map later.
+DEMO_LOCATIONS = [
+    ("Bengaluru, India", 12.9716, 77.5946),
+    ("Mumbai, India", 19.0760, 72.8777),
+    ("Delhi, India", 28.6139, 77.2090),
+    ("Chennai, India", 13.0827, 80.2707),
+    ("Hyderabad, India", 17.3850, 78.4867),
+    ("Pune, India", 18.5204, 73.8567),
+    ("Kolkata, India", 22.5726, 88.3639),
+    ("Ahmedabad, India", 23.0225, 72.5714),
+    ("Jaipur, India", 26.9124, 75.7873),
+    ("Kochi, India", 9.9312, 76.2673),
+    ("Singapore", 1.3521, 103.8198),
+    ("Dubai, UAE", 25.2048, 55.2708),
+    ("London, UK", 51.5074, -0.1278),
+    ("Paris, France", 48.8566, 2.3522),
+    ("Frankfurt, Germany", 50.1109, 8.6821),
+    ("Tokyo, Japan", 35.6762, 139.6503),
+    ("Sydney, Australia", -33.8688, 151.2093),
+    ("Toronto, Canada", 43.6532, -79.3832),
+    ("New York, USA", 40.7128, -74.0060),
+    ("San Francisco, USA", 37.7749, -122.4194),
+    ("Bangkok, Thailand", 13.7563, 100.5018),
+    ("Kuala Lumpur, Malaysia", 3.1390, 101.6869),
+    ("Amsterdam, Netherlands", 52.3676, 4.9041),
+    ("Zurich, Switzerland", 47.3769, 8.5417),
+    ("Doha, Qatar", 25.2854, 51.5310),
+    ("Hong Kong", 22.3193, 114.1694),
+    ("Seoul, South Korea", 37.5665, 126.9780),
+    ("Rome, Italy", 41.9028, 12.4964),
+    ("Madrid, Spain", 40.4168, -3.7038),
+    ("Cape Town, South Africa", -33.9249, 18.4241),
+]
+
+
+def location_coordinates(location):
+    """Return latitude and longitude from a demo location tuple."""
+    return location[1], location[2]
+
+
+def generate_possible_travel_pair(index: int):
+    """
+    Return two different recognizable locations for a transaction
+    whose movement remains physically plausible within the generated
+    timestamp gap.
+
+    A pool of 45 unique city-to-city pairs is used so the Normal,
+    API Route Tampering, and Behaviour Fraud scenarios do not reuse
+    the same geographic pair.
+    """
+    locations = {
+        "Bengaluru, India": (12.9716, 77.5946),
+        "Mysuru, India": (12.2958, 76.6394),
+        "Mumbai, India": (19.0760, 72.8777),
+        "Pune, India": (18.5204, 73.8567),
+        "Delhi, India": (28.6139, 77.2090),
+        "Jaipur, India": (26.9124, 75.7873),
+        "Chennai, India": (13.0827, 80.2707),
+        "Hyderabad, India": (17.3850, 78.4867),
+        "Vijayawada, India": (16.5062, 80.6480),
+        "Kolkata, India": (22.5726, 88.3639),
+        "Durgapur, India": (23.5204, 87.3119),
+        "Ahmedabad, India": (23.0225, 72.5714),
+        "Udaipur, India": (24.5854, 73.7125),
+        "Kochi, India": (9.9312, 76.2673),
+        "Coimbatore, India": (11.0168, 76.9558),
+        "Chandigarh, India": (30.7333, 76.7794),
+        "Bhubaneswar, India": (20.2961, 85.8245),
+        "Goa, India": (15.4909, 73.8278),
+        "Nagpur, India": (21.1458, 79.0882),
+        "Lucknow, India": (26.8467, 80.9462),
+        "Indore, India": (22.7196, 75.8577),
+        "Surat, India": (21.1702, 72.8311),
+        "Patna, India": (25.5941, 85.1376),
+        "Visakhapatnam, India": (17.6868, 83.2185),
+        "Bhopal, India": (23.2599, 77.4126),
+    }
+
+    possible_pairs = [
+        ("Bengaluru, India", "Mysuru, India"),
+        ("Mumbai, India", "Pune, India"),
+        ("Delhi, India", "Jaipur, India"),
+        ("Chennai, India", "Bengaluru, India"),
+        ("Hyderabad, India", "Vijayawada, India"),
+        ("Kolkata, India", "Durgapur, India"),
+        ("Ahmedabad, India", "Udaipur, India"),
+        ("Kochi, India", "Coimbatore, India"),
+        ("Pune, India", "Mumbai, India"),
+        ("Jaipur, India", "Delhi, India"),
+        ("Bengaluru, India", "Hyderabad, India"),
+        ("Chennai, India", "Hyderabad, India"),
+        ("Mumbai, India", "Ahmedabad, India"),
+        ("Delhi, India", "Chandigarh, India"),
+        ("Kolkata, India", "Bhubaneswar, India"),
+
+        ("Goa, India", "Mumbai, India"),
+        ("Nagpur, India", "Bhopal, India"),
+        ("Lucknow, India", "Delhi, India"),
+        ("Indore, India", "Ahmedabad, India"),
+        ("Surat, India", "Mumbai, India"),
+        ("Patna, India", "Kolkata, India"),
+        ("Visakhapatnam, India", "Bhubaneswar, India"),
+        ("Bhopal, India", "Indore, India"),
+        ("Mysuru, India", "Coimbatore, India"),
+        ("Vijayawada, India", "Chennai, India"),
+
+        ("Bengaluru, India", "Goa, India"),
+        ("Pune, India", "Surat, India"),
+        ("Jaipur, India", "Udaipur, India"),
+        ("Delhi, India", "Lucknow, India"),
+        ("Hyderabad, India", "Nagpur, India"),
+        ("Chennai, India", "Coimbatore, India"),
+        ("Kochi, India", "Goa, India"),
+        ("Ahmedabad, India", "Surat, India"),
+        ("Kolkata, India", "Patna, India"),
+        ("Mumbai, India", "Indore, India"),
+
+        ("Bengaluru, India", "Chennai, India"),
+        ("Hyderabad, India", "Visakhapatnam, India"),
+        ("Delhi, India", "Agra, India"),
+        ("Pune, India", "Nashik, India"),
+        ("Kolkata, India", "Ranchi, India"),
+        ("Chandigarh, India", "Jaipur, India"),
+        ("Lucknow, India", "Kanpur, India"),
+        ("Nagpur, India", "Raipur, India"),
+        ("Bhopal, India", "Indore, India"),
+        ("Surat, India", "Vadodara, India"),
+    ]
+
+    # Use the pair index directly. The three callers pass offsets
+    # of 0, 15, and 30 respectively.
+    origin_name, destination_name = possible_pairs[index - 1]
+
+    return (
+        origin_name,
+        destination_name,
+        locations.get(origin_name, DEMO_LOCATIONS[0][1:]),
+        locations.get(destination_name, DEMO_LOCATIONS[0][1:]),
+    )
+
+
+def generate_impossible_travel_pair(index: int):
+    """
+    Return two different, geographically distant demo locations.
+
+    The timestamp gap used by the impossible-travel scenario is
+    intentionally short, so the existing Layer 1 speed calculation
+    will classify the movement as impossible.
+    """
+    impossible_pairs = [
+        ("Bengaluru, India", "London, UK"),
+        ("Mumbai, India", "Tokyo, Japan"),
+        ("Delhi, India", "New York, USA"),
+        ("Chennai, India", "Toronto, Canada"),
+        ("Hyderabad, India", "Paris, France"),
+        ("Pune, India", "Sydney, Australia"),
+        ("Kolkata, India", "Frankfurt, Germany"),
+        ("Ahmedabad, India", "Singapore"),
+        ("Kochi, India", "Dubai, UAE"),
+        ("Jaipur, India", "San Francisco, USA"),
+        ("Bengaluru, India", "Amsterdam, Netherlands"),
+        ("Mumbai, India", "Seoul, South Korea"),
+        ("Delhi, India", "Rome, Italy"),
+        ("Chennai, India", "Zurich, Switzerland"),
+        ("Hyderabad, India", "Cape Town, South Africa"),
+    ]
+
+    locations = {
+        name: (latitude, longitude)
+        for name, latitude, longitude in DEMO_LOCATIONS
+    }
+
+    origin_name, destination_name = impossible_pairs[
+        (index - 1) % len(impossible_pairs)
+    ]
+
+    return (
+        origin_name,
+        destination_name,
+        locations[origin_name],
+        locations[destination_name],
+    )
+
+
+# -------------------------------------------------
 # NORMAL TRANSACTIONS
 # -------------------------------------------------
 
@@ -172,11 +363,14 @@ def create_normal_transactions():
         )
 
         (
-            previous_latitude,
-            previous_longitude,
-            current_latitude,
-            current_longitude,
-        ) = safe_location_pair()
+            previous_place,
+            current_place,
+            previous_coordinates,
+            current_coordinates,
+        ) = generate_possible_travel_pair(i)
+
+        previous_latitude, previous_longitude = previous_coordinates
+        current_latitude, current_longitude = current_coordinates
 
         current_time = (
             datetime.now()
@@ -185,10 +379,12 @@ def create_normal_transactions():
             )
         )
 
+        # Keep enough time between transactions for the selected
+        # city-to-city movement to remain physically plausible.
         previous_time = (
             current_time
             - timedelta(
-                hours=random.randint(1, 48)
+                hours=random.randint(3, 48)
             )
         )
 
@@ -304,6 +500,16 @@ def create_impossible_travel_transactions():
             random_device()
         )
 
+        (
+            previous_place,
+            current_place,
+            previous_coordinates,
+            current_coordinates,
+        ) = generate_impossible_travel_pair(i)
+
+        previous_latitude, previous_longitude = previous_coordinates
+        current_latitude, current_longitude = current_coordinates
+
         current_time = (
             datetime.now()
             - timedelta(
@@ -385,13 +591,12 @@ def create_impossible_travel_transactions():
                     2,
                 ),
 
-                # Bengaluru
-                previous_latitude=12.9716,
-                previous_longitude=77.5946,
-
-                # London
-                current_latitude=51.5074,
-                current_longitude=-0.1278,
+                # Different recognizable origin/destination
+                # for every generated impossible-travel transaction.
+                previous_latitude=previous_latitude,
+                previous_longitude=previous_longitude,
+                current_latitude=current_latitude,
+                current_longitude=current_longitude,
 
                 previous_transaction_timestamp=(
                     previous_time
@@ -432,11 +637,14 @@ def create_api_tampering_transactions():
         )
 
         (
-            previous_latitude,
-            previous_longitude,
-            current_latitude,
-            current_longitude,
-        ) = safe_location_pair()
+            previous_place,
+            current_place,
+            previous_coordinates,
+            current_coordinates,
+        ) = generate_possible_travel_pair(i + ROWS_PER_SCENARIO)
+
+        previous_latitude, previous_longitude = previous_coordinates
+        current_latitude, current_longitude = current_coordinates
 
         current_time = (
             datetime.now()
@@ -448,7 +656,7 @@ def create_api_tampering_transactions():
         previous_time = (
             current_time
             - timedelta(
-                hours=random.randint(1, 48)
+                hours=random.randint(3, 48)
             )
         )
 
@@ -743,18 +951,23 @@ def create_behaviour_fraud_transactions():
         },
     ]
 
-    for profile in fraud_profiles:
+    for i, profile in enumerate(fraud_profiles, start=1):
 
         device_type, browser_name, operating_system = (
             random_device()
         )
 
         (
-            previous_latitude,
-            previous_longitude,
-            current_latitude,
-            current_longitude,
-        ) = safe_location_pair()
+            previous_place,
+            current_place,
+            previous_coordinates,
+            current_coordinates,
+        ) = generate_possible_travel_pair(
+            i + (2 * ROWS_PER_SCENARIO)
+        )
+
+        previous_latitude, previous_longitude = previous_coordinates
+        current_latitude, current_longitude = current_coordinates
 
         current_time = (
             datetime.now()
@@ -766,7 +979,7 @@ def create_behaviour_fraud_transactions():
         previous_time = (
             current_time
             - timedelta(
-                hours=random.randint(2, 48)
+                hours=random.randint(3, 48)
             )
         )
 
