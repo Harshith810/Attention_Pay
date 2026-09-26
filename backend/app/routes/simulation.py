@@ -224,6 +224,15 @@ def process_transaction(
             "transaction_id": transaction.transaction_id,
             **layer1_result,
             "ai_executed": False,
+            "prediction": None,
+            "fraud_probability": None,
+            "legitimate_probability": None,
+            "explanation_source": layer1_result.get(
+                "explanation_source"
+            ),
+            "explanation": layer1_result.get(
+                "explanation"
+            ),
             "features": None,
             "ai_result": None,
         }
@@ -246,6 +255,14 @@ def process_transaction(
 
     ai_result = (
         fraud_detection_service.predict(
+            features
+        )
+    )
+
+    # Generate SHAP + LIME only after the TabTransformer
+    # prediction has been produced from the exact same feature vector.
+    xai_result = (
+        fraud_detection_service.explain(
             features
         )
     )
@@ -303,7 +320,23 @@ def process_transaction(
 
         "ai_executed": True,
 
+        "prediction": ai_result["prediction"],
+
+        "fraud_probability": ai_result[
+            "fraud_probability"
+        ],
+
+        "legitimate_probability": ai_result[
+            "legitimate_probability"
+        ],
+
+        "explanation_source": "tabtransformer_xai",
+
+        "explanation": xai_result["explanation"],
+
         "features": features,
 
+        # Preserve the existing nested AI result for backward
+        # compatibility with the current frontend/API consumers.
         "ai_result": ai_result,
     }

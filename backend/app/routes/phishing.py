@@ -35,8 +35,15 @@ def analyze_url(
     )
 
     stage2_access_token = None
+    explanation_source = None
+    explanation = None
 
-    if not blocked:
+    if blocked:
+        explanation_source = "bert_url"
+        explanation = bert_service.explain(
+            request.url
+        )
+    else:
         stage2_access_token = (
             stage_flow_service
             .create_stage2_access()
@@ -45,6 +52,8 @@ def analyze_url(
     return {
         **result,
         "blocked": blocked,
+        "explanation_source": explanation_source,
+        "explanation": explanation,
         "stage2_access_token": (
             stage2_access_token
         ),

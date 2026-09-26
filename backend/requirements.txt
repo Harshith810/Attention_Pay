@@ -10,3 +10,5 @@ joblib
 scikit-learn
 numpy
 pandas
+shap
+lime

@@ -11,56 +11,47 @@ class TransactionScenarioRequest(BaseModel):
 class TransactionPreview(BaseModel):
     transaction_id: str
     selection_mode: str
-
     receiver_identifier: str
-
     transaction_amount: float
     previous_transaction_amount: float
-
     transactions_last_1min: int
     transactions_last_5min: int
     transactions_last_10min: int
-
     known_device_flag: bool
     device_changed_flag: bool
-
     device_type: str
     browser_name: str
     operating_system: str
-
     session_risk_score: float
-
     previous_latitude: float
     previous_longitude: float
-
     current_latitude: float
     current_longitude: float
-
     previous_transaction_timestamp: datetime
     current_transaction_timestamp: datetime
-
     expected_api_endpoint: str
     actual_api_endpoint: str
-
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
 
 class TransactionProcessingResponse(BaseModel):
     transaction_id: str
-
     layer: str
     passed: bool
     decision: str
     reason: str
-
     failed_checks: list[str]
-
     checks: dict[str, dict[str, Any]]
 
+    # Consistent XAI contract.
+    explanation_source: str | None = None
+    explanation: dict[str, Any] | None = None
+
+    # Layer 2 prediction fields. Null when Layer 1 blocks.
+    prediction: str | None = None
+    fraud_probability: float | None = None
+    legitimate_probability: float | None = None
+
     ai_executed: bool
-
     features: dict[str, Any] | None = None
-
     ai_result: dict[str, Any] | None = None

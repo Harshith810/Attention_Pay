@@ -3,6 +3,8 @@ from pathlib import Path
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from backend.app.services.explainability.bert_explainer import BERTExplainer
+
 
 class BERTService:
     MAX_LENGTH = 160
@@ -19,11 +21,18 @@ class BERTService:
         self.model_dir = project_root / "model"
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_dir)
+        
         self.model = AutoModelForSequenceClassification.from_pretrained(
-            self.model_dir
+            self.model_dir,
+            attn_implementation="eager",
         )
 
         self.model.eval()
+
+        self.explainer = BERTExplainer(
+            tokenizer=self.tokenizer,
+            model=self.model,
+        )
 
     def predict(self, url: str) -> dict:
         inputs = self.tokenizer(
@@ -52,3 +61,12 @@ class BERTService:
             "phishing_probability": phishing_probability,
             "legitimate_probability": legitimate_probability,
         }
+    
+    def explain(self, url: str) -> dict:
+        """
+        Generate a Stage 1 URL explanation.
+
+        This should normally be called only when the URL has been
+        classified as PHISHING.
+        """
+        return self.explainer.explain(url)    

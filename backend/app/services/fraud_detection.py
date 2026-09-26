@@ -6,6 +6,9 @@ import torch
 import pandas as pd
 
 from backend.ml.tabtransformer.model import TabTransformer
+from backend.app.services.explainability.tabtransformer_explainer import (
+    TabTransformerExplainer,
+)
 
 
 class FraudDetectionService:
@@ -21,6 +24,7 @@ class FraudDetectionService:
         - Input preprocessing
         - Model inference
         - Fraud/Legitimate prediction
+        - SHAP + LIME explainability
     """
 
     # ---------------------------------------------------------
@@ -166,19 +170,12 @@ class FraudDetectionService:
         # -----------------------------------------------------
 
         self.model = TabTransformer(
-
             cat_cardinalities=self.cat_cardinalities,
-
             num_numerical=self.num_numerical,
-
             embed_dim=self.embed_dim,
-
             n_heads=self.n_heads,
-
             n_layers=self.n_layers,
-
             num_classes=self.num_classes,
-
             dropout=self.dropout,
         )
 
@@ -211,6 +208,28 @@ class FraudDetectionService:
                 "chosen_threshold",
                 self.DEFAULT_THRESHOLD,
             )
+        )
+
+        # -----------------------------------------------------
+        # TABTRANSFORMER EXPLAINABILITY
+        # -----------------------------------------------------
+        #
+        # The explainer receives the SAME:
+        #   - trained model
+        #   - scaler
+        #   - categorical encoders
+        #   - feature order
+        #   - device
+        #
+        # used by production inference.
+        # -----------------------------------------------------
+
+        self.explainer = TabTransformerExplainer(
+            model=self.model,
+            scaler=self.scaler,
+            cat_encoders=self.cat_encoders,
+            feature_order=self.feature_order,
+            device=self.device,
         )
 
     # =========================================================
@@ -311,14 +330,14 @@ class FraudDetectionService:
         # -----------------------------------------------------
 
         numerical_features = [
-        "known_device_flag",
-        "device_changed_flag",
-        "transactions_last_1min",
-        "transactions_last_5min",
-        "transactions_last_10min",
-        "transaction_amount",
-        "previous_transaction_amount",
-        "session_risk_score",
+            "known_device_flag",
+            "device_changed_flag",
+            "transactions_last_1min",
+            "transactions_last_5min",
+            "transactions_last_10min",
+            "transaction_amount",
+            "previous_transaction_amount",
+            "session_risk_score",
         ]
 
         numerical = [
@@ -416,20 +435,14 @@ class FraudDetectionService:
         # -----------------------------------------------------
 
         categorical_tensor = torch.tensor(
-
             [categorical],
-
             dtype=torch.long,
-
             device=self.device,
         )
 
         numerical_tensor = torch.tensor(
-
             [numerical],
-
             dtype=torch.float32,
-
             device=self.device,
         )
 
@@ -440,9 +453,7 @@ class FraudDetectionService:
         with torch.no_grad():
 
             logits = self.model(
-
                 categorical_tensor,
-
                 numerical_tensor,
             )
 
@@ -477,11 +488,8 @@ class FraudDetectionService:
         # -----------------------------------------------------
 
         prediction = (
-
             "Fraud"
-
             if fraud_probability >= self.threshold
-
             else "Legitimate"
         )
 
@@ -490,7 +498,6 @@ class FraudDetectionService:
         # -----------------------------------------------------
 
         return {
-
             "prediction": prediction,
 
             "fraud_probability": round(
@@ -512,6 +519,27 @@ class FraudDetectionService:
                 "1": "Legitimate",
             },
         }
+
+    # =========================================================
+    # EXPLAINABILITY
+    # =========================================================
+
+    def explain(
+        self,
+        data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Generate SHAP and LIME explanations for a transaction.
+
+        This method does NOT make the prediction decision.
+
+        The existing predict() method remains the source of
+        truth for the actual Fraud/Legitimate classification.
+        """
+
+        return self.explainer.explain(
+            data
+        )
 
     # =========================================================
     # MODEL INFORMATION

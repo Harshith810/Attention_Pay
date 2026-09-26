@@ -191,39 +191,3 @@ def check_impossible_travel(
     }
 
 
-def check_api_route_integrity(
-    transaction: Transaction,
-) -> dict:
-    """
-    Verifies that the actual API endpoint matches
-    the expected API endpoint.
-    """
-
-    expected_endpoint = transaction.expected_api_endpoint
-    actual_endpoint = transaction.actual_api_endpoint
-
-    passed = expected_endpoint == actual_endpoint
-
-    if passed:
-        return {
-            "check": "api_route_integrity",
-            "passed": True,
-            "status": "PASS",
-            "reason": (
-                "API route matches the expected endpoint."
-            ),
-            "expected_endpoint": expected_endpoint,
-            "actual_endpoint": actual_endpoint,
-        }
-
-    return {
-        "check": "api_route_integrity",
-        "passed": False,
-        "status": "BLOCK",
-        "reason": (
-            "API route integrity violation detected. "
-            "Actual endpoint does not match the expected endpoint."
-        ),
-        "expected_endpoint": expected_endpoint,
-        "actual_endpoint": actual_endpoint,
-    }
