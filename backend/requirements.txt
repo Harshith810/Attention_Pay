@@ -6,3 +6,7 @@ torch
 transformers
 sqlalchemy
 psycopg2-binary
+joblib
+scikit-learn
+numpy
+pandas

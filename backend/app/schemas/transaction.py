@@ -58,3 +58,9 @@ class TransactionProcessingResponse(BaseModel):
     failed_checks: list[str]
 
     checks: dict[str, dict[str, Any]]
+
+    ai_executed: bool
+
+    features: dict[str, Any] | None = None
+
+    ai_result: dict[str, Any] | None = None

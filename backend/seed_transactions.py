@@ -54,6 +54,67 @@ def random_device():
     return random.choice(DEVICES)
 
 
+def generate_ordered_velocity(
+    velocity_1_range,
+    velocity_5_range,
+    velocity_10_range,
+):
+    """
+    Generate transaction velocity values while guaranteeing:
+
+        transactions_last_1min
+        <=
+        transactions_last_5min
+        <=
+        transactions_last_10min
+
+    The supplied ranges still control the scenario-specific
+    magnitude and randomness.
+    """
+
+    v1 = random.randint(*velocity_1_range)
+
+    v5_min = max(
+        velocity_5_range[0],
+        v1,
+    )
+
+    v5_max = velocity_5_range[1]
+
+    if v5_min > v5_max:
+        raise ValueError(
+            "Invalid velocity ranges: "
+            "5-minute range cannot accommodate the generated "
+            "1-minute value."
+        )
+
+    v5 = random.randint(
+        v5_min,
+        v5_max,
+    )
+
+    v10_min = max(
+        velocity_10_range[0],
+        v5,
+    )
+
+    v10_max = velocity_10_range[1]
+
+    if v10_min > v10_max:
+        raise ValueError(
+            "Invalid velocity ranges: "
+            "10-minute range cannot accommodate the generated "
+            "5-minute value."
+        )
+
+    v10 = random.randint(
+        v10_min,
+        v10_max,
+    )
+
+    return v1, v5, v10
+
+
 def safe_location_pair():
     """
     Returns two nearby locations.
@@ -62,14 +123,28 @@ def safe_location_pair():
     Impossible Travel detection.
     """
 
-    base_latitude = random.uniform(12.8, 13.1)
-    base_longitude = random.uniform(77.4, 77.8)
+    base_latitude = random.uniform(
+        12.8,
+        13.1,
+    )
+
+    base_longitude = random.uniform(
+        77.4,
+        77.8,
+    )
 
     previous_latitude = base_latitude
     previous_longitude = base_longitude
 
-    current_latitude = base_latitude + random.uniform(-0.03, 0.03)
-    current_longitude = base_longitude + random.uniform(-0.03, 0.03)
+    current_latitude = (
+        base_latitude
+        + random.uniform(-0.03, 0.03)
+    )
+
+    current_longitude = (
+        base_longitude
+        + random.uniform(-0.03, 0.03)
+    )
 
     return (
         previous_latitude,
@@ -87,9 +162,14 @@ def create_normal_transactions():
 
     transactions = []
 
-    for i in range(1, ROWS_PER_SCENARIO + 1):
+    for i in range(
+        1,
+        ROWS_PER_SCENARIO + 1,
+    ):
 
-        device_type, browser_name, operating_system = random_device()
+        device_type, browser_name, operating_system = (
+            random_device()
+        )
 
         (
             previous_latitude,
@@ -98,31 +178,68 @@ def create_normal_transactions():
             current_longitude,
         ) = safe_location_pair()
 
-        current_time = datetime.now() - timedelta(
-            minutes=random.randint(1, 5000)
+        current_time = (
+            datetime.now()
+            - timedelta(
+                minutes=random.randint(1, 5000)
+            )
         )
 
-        previous_time = current_time - timedelta(
-            hours=random.randint(1, 48)
+        previous_time = (
+            current_time
+            - timedelta(
+                hours=random.randint(1, 48)
+            )
         )
 
-        amount = round(random.uniform(100, 5000), 2)
+        amount = round(
+            random.uniform(
+                100,
+                5000,
+            ),
+            2,
+        )
+
+        (
+            transactions_last_1min,
+            transactions_last_5min,
+            transactions_last_10min,
+        ) = generate_ordered_velocity(
+            (0, 2),
+            (1, 4),
+            (1, 6),
+        )
 
         transactions.append(
             Transaction(
                 transaction_id=generate_transaction_id("N"),
                 scenario="normal_transaction",
-                receiver_identifier=f"merchant_{random.randint(1000, 9999)}",
+
+                receiver_identifier=(
+                    f"merchant_{random.randint(1000, 9999)}"
+                ),
 
                 transaction_amount=amount,
+
                 previous_transaction_amount=round(
-                    random.uniform(100, 5000),
+                    random.uniform(
+                        100,
+                        5000,
+                    ),
                     2,
                 ),
 
-                transactions_last_1min=random.randint(0, 2),
-                transactions_last_5min=random.randint(1, 4),
-                transactions_last_10min=random.randint(1, 6),
+                transactions_last_1min=(
+                    transactions_last_1min
+                ),
+
+                transactions_last_5min=(
+                    transactions_last_5min
+                ),
+
+                transactions_last_10min=(
+                    transactions_last_10min
+                ),
 
                 known_device_flag=True,
                 device_changed_flag=False,
@@ -132,7 +249,10 @@ def create_normal_transactions():
                 operating_system=operating_system,
 
                 session_risk_score=round(
-                    random.uniform(0.05, 0.30),
+                    random.uniform(
+                        0.05,
+                        0.30,
+                    ),
                     2,
                 ),
 
@@ -142,17 +262,24 @@ def create_normal_transactions():
                 current_latitude=current_latitude,
                 current_longitude=current_longitude,
 
-                previous_transaction_timestamp=previous_time,
-                current_transaction_timestamp=current_time,
+                previous_transaction_timestamp=(
+                    previous_time
+                ),
+
+                current_transaction_timestamp=(
+                    current_time
+                ),
 
                 expected_api_endpoint=random.choice(
                     EXPECTED_ENDPOINTS
                 ),
-                actual_api_endpoint=EXPECTED_ENDPOINTS[0],
+
+                actual_api_endpoint=(
+                    EXPECTED_ENDPOINTS[0]
+                ),
             )
         )
 
-        # Ensure expected endpoint matches actual endpoint.
         transactions[-1].actual_api_endpoint = (
             transactions[-1].expected_api_endpoint
         )
@@ -168,20 +295,42 @@ def create_impossible_travel_transactions():
 
     transactions = []
 
-    for i in range(1, ROWS_PER_SCENARIO + 1):
+    for i in range(
+        1,
+        ROWS_PER_SCENARIO + 1,
+    ):
 
-        device_type, browser_name, operating_system = random_device()
-
-        current_time = datetime.now() - timedelta(
-            minutes=random.randint(1, 5000)
+        device_type, browser_name, operating_system = (
+            random_device()
         )
 
-        # Only minutes apart
-        previous_time = current_time - timedelta(
-            minutes=random.randint(5, 30)
+        current_time = (
+            datetime.now()
+            - timedelta(
+                minutes=random.randint(1, 5000)
+            )
         )
 
-        expected_endpoint = random.choice(EXPECTED_ENDPOINTS)
+        previous_time = (
+            current_time
+            - timedelta(
+                minutes=random.randint(5, 30)
+            )
+        )
+
+        expected_endpoint = random.choice(
+            EXPECTED_ENDPOINTS
+        )
+
+        (
+            transactions_last_1min,
+            transactions_last_5min,
+            transactions_last_10min,
+        ) = generate_ordered_velocity(
+            (0, 3),
+            (1, 5),
+            (2, 7),
+        )
 
         transactions.append(
             Transaction(
@@ -194,18 +343,32 @@ def create_impossible_travel_transactions():
                 ),
 
                 transaction_amount=round(
-                    random.uniform(500, 10000),
+                    random.uniform(
+                        500,
+                        10000,
+                    ),
                     2,
                 ),
 
                 previous_transaction_amount=round(
-                    random.uniform(100, 5000),
+                    random.uniform(
+                        100,
+                        5000,
+                    ),
                     2,
                 ),
 
-                transactions_last_1min=random.randint(0, 3),
-                transactions_last_5min=random.randint(1, 5),
-                transactions_last_10min=random.randint(2, 7),
+                transactions_last_1min=(
+                    transactions_last_1min
+                ),
+
+                transactions_last_5min=(
+                    transactions_last_5min
+                ),
+
+                transactions_last_10min=(
+                    transactions_last_10min
+                ),
 
                 known_device_flag=True,
                 device_changed_flag=False,
@@ -215,7 +378,10 @@ def create_impossible_travel_transactions():
                 operating_system=operating_system,
 
                 session_risk_score=round(
-                    random.uniform(0.20, 0.50),
+                    random.uniform(
+                        0.20,
+                        0.50,
+                    ),
                     2,
                 ),
 
@@ -227,11 +393,21 @@ def create_impossible_travel_transactions():
                 current_latitude=51.5074,
                 current_longitude=-0.1278,
 
-                previous_transaction_timestamp=previous_time,
-                current_transaction_timestamp=current_time,
+                previous_transaction_timestamp=(
+                    previous_time
+                ),
 
-                expected_api_endpoint=expected_endpoint,
-                actual_api_endpoint=expected_endpoint,
+                current_transaction_timestamp=(
+                    current_time
+                ),
+
+                expected_api_endpoint=(
+                    expected_endpoint
+                ),
+
+                actual_api_endpoint=(
+                    expected_endpoint
+                ),
             )
         )
 
@@ -246,9 +422,14 @@ def create_api_tampering_transactions():
 
     transactions = []
 
-    for i in range(1, ROWS_PER_SCENARIO + 1):
+    for i in range(
+        1,
+        ROWS_PER_SCENARIO + 1,
+    ):
 
-        device_type, browser_name, operating_system = random_device()
+        device_type, browser_name, operating_system = (
+            random_device()
+        )
 
         (
             previous_latitude,
@@ -257,17 +438,37 @@ def create_api_tampering_transactions():
             current_longitude,
         ) = safe_location_pair()
 
-        current_time = datetime.now() - timedelta(
-            minutes=random.randint(1, 5000)
+        current_time = (
+            datetime.now()
+            - timedelta(
+                minutes=random.randint(1, 5000)
+            )
         )
 
-        previous_time = current_time - timedelta(
-            hours=random.randint(1, 48)
+        previous_time = (
+            current_time
+            - timedelta(
+                hours=random.randint(1, 48)
+            )
         )
 
-        expected_endpoint = random.choice(EXPECTED_ENDPOINTS)
+        expected_endpoint = random.choice(
+            EXPECTED_ENDPOINTS
+        )
 
-        actual_endpoint = random.choice(TAMPERED_ENDPOINTS)
+        actual_endpoint = random.choice(
+            TAMPERED_ENDPOINTS
+        )
+
+        (
+            transactions_last_1min,
+            transactions_last_5min,
+            transactions_last_10min,
+        ) = generate_ordered_velocity(
+            (0, 3),
+            (1, 5),
+            (2, 8),
+        )
 
         transactions.append(
             Transaction(
@@ -280,18 +481,32 @@ def create_api_tampering_transactions():
                 ),
 
                 transaction_amount=round(
-                    random.uniform(100, 8000),
+                    random.uniform(
+                        100,
+                        8000,
+                    ),
                     2,
                 ),
 
                 previous_transaction_amount=round(
-                    random.uniform(100, 5000),
+                    random.uniform(
+                        100,
+                        5000,
+                    ),
                     2,
                 ),
 
-                transactions_last_1min=random.randint(0, 3),
-                transactions_last_5min=random.randint(1, 5),
-                transactions_last_10min=random.randint(2, 8),
+                transactions_last_1min=(
+                    transactions_last_1min
+                ),
+
+                transactions_last_5min=(
+                    transactions_last_5min
+                ),
+
+                transactions_last_10min=(
+                    transactions_last_10min
+                ),
 
                 known_device_flag=True,
                 device_changed_flag=False,
@@ -301,7 +516,10 @@ def create_api_tampering_transactions():
                 operating_system=operating_system,
 
                 session_risk_score=round(
-                    random.uniform(0.10, 0.40),
+                    random.uniform(
+                        0.10,
+                        0.40,
+                    ),
                     2,
                 ),
 
@@ -311,11 +529,21 @@ def create_api_tampering_transactions():
                 current_latitude=current_latitude,
                 current_longitude=current_longitude,
 
-                previous_transaction_timestamp=previous_time,
-                current_transaction_timestamp=current_time,
+                previous_transaction_timestamp=(
+                    previous_time
+                ),
 
-                expected_api_endpoint=expected_endpoint,
-                actual_api_endpoint=actual_endpoint,
+                current_transaction_timestamp=(
+                    current_time
+                ),
+
+                expected_api_endpoint=(
+                    expected_endpoint
+                ),
+
+                actual_api_endpoint=(
+                    actual_endpoint
+                ),
             )
         )
 
@@ -528,16 +756,32 @@ def create_behaviour_fraud_transactions():
             current_longitude,
         ) = safe_location_pair()
 
-        current_time = datetime.now() - timedelta(
-            minutes=random.randint(1, 5000)
+        current_time = (
+            datetime.now()
+            - timedelta(
+                minutes=random.randint(1, 5000)
+            )
         )
 
-        previous_time = current_time - timedelta(
-            hours=random.randint(2, 48)
+        previous_time = (
+            current_time
+            - timedelta(
+                hours=random.randint(2, 48)
+            )
         )
 
         expected_endpoint = random.choice(
             EXPECTED_ENDPOINTS
+        )
+
+        (
+            transactions_last_1min,
+            transactions_last_5min,
+            transactions_last_10min,
+        ) = generate_ordered_velocity(
+            profile["velocity_1"],
+            profile["velocity_5"],
+            profile["velocity_10"],
         )
 
         transactions.append(
@@ -551,7 +795,9 @@ def create_behaviour_fraud_transactions():
                 ),
 
                 transaction_amount=round(
-                    random.uniform(*profile["amount"]),
+                    random.uniform(
+                        *profile["amount"]
+                    ),
                     2,
                 ),
 
@@ -562,19 +808,21 @@ def create_behaviour_fraud_transactions():
                     2,
                 ),
 
-                transactions_last_1min=random.randint(
-                    *profile["velocity_1"]
+                transactions_last_1min=(
+                    transactions_last_1min
                 ),
 
-                transactions_last_5min=random.randint(
-                    *profile["velocity_5"]
+                transactions_last_5min=(
+                    transactions_last_5min
                 ),
 
-                transactions_last_10min=random.randint(
-                    *profile["velocity_10"]
+                transactions_last_10min=(
+                    transactions_last_10min
                 ),
 
-                known_device_flag=profile["known_device"],
+                known_device_flag=(
+                    profile["known_device"]
+                ),
 
                 device_changed_flag=(
                     profile["device_changed"]
@@ -598,12 +846,22 @@ def create_behaviour_fraud_transactions():
                 current_latitude=current_latitude,
                 current_longitude=current_longitude,
 
-                previous_transaction_timestamp=previous_time,
-                current_transaction_timestamp=current_time,
+                previous_transaction_timestamp=(
+                    previous_time
+                ),
+
+                current_transaction_timestamp=(
+                    current_time
+                ),
 
                 # Layer 1 API integrity check should pass
-                expected_api_endpoint=expected_endpoint,
-                actual_api_endpoint=expected_endpoint,
+                expected_api_endpoint=(
+                    expected_endpoint
+                ),
+
+                actual_api_endpoint=(
+                    expected_endpoint
+                ),
             )
         )
 
@@ -671,7 +929,9 @@ def seed_database():
             f"{ROWS_PER_SCENARIO}"
         )
         print("-" * 40)
-        print(f"Total transactions: {len(transactions)}")
+        print(
+            f"Total transactions: {len(transactions)}"
+        )
 
     except Exception as error:
 

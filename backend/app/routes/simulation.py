@@ -23,6 +23,14 @@ from backend.app.dependencies.stage_access import (
     require_stage2_access,
 )
 
+from backend.app.services.feature_engineering import (
+    feature_engineering_service,
+)
+
+from backend.app.services.fraud_detection import (
+    fraud_detection_service,
+)
+
 
 router = APIRouter(
     prefix="/api/v1/simulate",
@@ -163,9 +171,24 @@ def process_transaction(
     ),
 ):
     """
-    Retrieve the transaction from PostgreSQL and
-    process it through Layer 1 security checks.
+    Retrieve the transaction and process it through:
+
+    Layer 1:
+        - API Route Integrity
+        - Impossible Travel
+
+    If Layer 1 blocks the transaction:
+        - Stop immediately.
+        - Do not execute Layer 2 AI.
+
+    If Layer 1 passes:
+        - Feature Engineering
+        - TabTransformer fraud detection
     """
+
+    # ---------------------------------------------------------
+    # 1. Retrieve transaction
+    # ---------------------------------------------------------
 
     transaction = get_transaction_by_id(
         db=db,
@@ -180,11 +203,107 @@ def process_transaction(
             },
         )
 
-    result = run_layer1_security_checks(
+    # ---------------------------------------------------------
+    # 2. Layer 1 security checks
+    # ---------------------------------------------------------
+
+    layer1_result = run_layer1_security_checks(
         transaction
     )
 
+    # ---------------------------------------------------------
+    # 3. BLOCK immediately if Layer 1 fails
+    #
+    # IMPORTANT:
+    # TabTransformer must NOT execute here.
+    # ---------------------------------------------------------
+
+    if layer1_result["decision"] == "BLOCK":
+
+        return {
+            "transaction_id": transaction.transaction_id,
+            **layer1_result,
+            "ai_executed": False,
+            "features": None,
+            "ai_result": None,
+        }
+
+    # ---------------------------------------------------------
+    # 4. Feature Engineering
+    #
+    # Only reached when Layer 1 passes.
+    # ---------------------------------------------------------
+
+    features = (
+        feature_engineering_service.from_transaction(
+            transaction
+        )
+    )
+
+    # ---------------------------------------------------------
+    # 5. TabTransformer inference
+    # ---------------------------------------------------------
+
+    ai_result = (
+        fraud_detection_service.predict(
+            features
+        )
+    )
+
+    # ---------------------------------------------------------
+    # 6. Determine final decision
+    # ---------------------------------------------------------
+
+    if ai_result["prediction"] == "Fraud":
+
+        decision = "BLOCK"
+
+        passed = False
+
+        reason = (
+            "Transaction passed Layer 1 security checks "
+            "but was classified as fraud by the "
+            "TabTransformer."
+        )
+
+    else:
+
+        decision = "CONTINUE"
+
+        passed = True
+
+        reason = (
+            "Transaction passed Layer 1 security checks "
+            "and was classified as legitimate by the "
+            "TabTransformer."
+        )
+
+    # ---------------------------------------------------------
+    # 7. Final response
+    # ---------------------------------------------------------
+
     return {
         "transaction_id": transaction.transaction_id,
-        **result,
+
+        "layer": "layer_2_fraud_detection",
+
+        "passed": passed,
+
+        "decision": decision,
+
+        "reason": reason,
+
+        "failed_checks": layer1_result[
+            "failed_checks"
+        ],
+
+        "checks": layer1_result[
+            "checks"
+        ],
+
+        "ai_executed": True,
+
+        "features": features,
+
+        "ai_result": ai_result,
     }
