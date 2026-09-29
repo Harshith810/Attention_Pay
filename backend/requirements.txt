@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+python-dotenv
+torch
+transformers
+sqlalchemy
+psycopg2-binary
+joblib
+scikit-learn
+numpy
+pandas
+shap
+lime
