@@ -1,784 +1,326 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import '../styles/howItWorks.css';
 
-const flowNodes = [
-  {
-    id: 'user',
-    type: 'single',
-    number: '00',
-    title: 'User',
-    subtitle: 'Payment journey begins',
-    realTitle: 'User clicks a payment link',
-    realText:
-      'A real-world browser extension could observe the destination before the user enters payment information.',
-    steps: [
-      ['01', 'User clicks a payment link', 'The browser receives the destination.'],
-      ['02', 'Browser opens the destination', 'The security layer gets the URL before payment continues.'],
-      ['03', 'URL is handed to security', 'The destination becomes the input to Stage 1.'],
-    ],
-  },
-  {
-    id: 'bert',
-    type: 'branch',
-    number: '01',
-    title: 'Stage 1: BERT Phishing Detection',
-    subtitle: 'Verify the payment destination',
-    realTitle: 'Browser extension → BERT verification',
-    realText:
-      'The extension intercepts the destination, tokenizes the URL, sends the tokens through BERT, and receives a phishing or legitimate prediction.',
-    steps: [
-      ['01', 'Browser extension captures the URL', 'The clicked destination is inspected before payment access is allowed.'],
-      ['02', 'URL is tokenized', 'The URL is split into tokens that the transformer can process.'],
-      ['03', 'BERT analyzes the tokens', 'The transformer evaluates patterns and contextual relationships in the URL.'],
-      ['04', 'Prediction is produced', 'The model returns a phishing or legitimate classification with confidence.'],
-      ['05', 'Security gate reacts', 'Phishing blocks the journey; legitimate continues to Stage 2.'],
-    ],
-  },
-  {
-    id: 'transaction',
-    type: 'single',
-    number: '02',
-    title: 'Stage 2: Transaction Security',
-    subtitle: 'Retrieve transaction context',
-    realTitle: 'Payment API sends transaction context',
-    realText:
-      'In a real payment environment, the protected backend receives the transaction and the available security context from the payment system.',
-    steps: [
-      ['01', 'Payment request starts', 'The user initiates a payment after the destination passes Stage 1.'],
-      ['02', 'Backend receives the request', 'The protected payment service becomes the next security boundary.'],
-      ['03', 'Transaction context is retrieved', 'Amount, receiver, device, timing, location and related fields become available.'],
-      ['04', 'Security pipeline starts', 'The transaction is passed to the deterministic Layer 1 checks.'],
-    ],
-  },
-  {
-    id: 'layer1',
-    type: 'branch',
-    number: '03',
-    title: 'Layer 1 Security Checks',
-    subtitle: 'Deterministic protection before AI',
-    realTitle: 'Payment gateway performs rule checks',
-    realText:
-      'A production gateway can immediately verify request integrity and physically plausible transaction movement before spending compute on the AI layer.',
-    steps: [
-      ['01', 'API Route Integrity', 'Verify that the transaction reached the expected backend route.'],
-      ['02', 'Impossible Travel', 'Compare previous and current locations with their timestamps.'],
-      ['03', 'Decision gate', 'If either rule blocks, the transaction stops immediately.'],
-      ['04', 'PASS path', 'Only transactions that pass Layer 1 continue to feature engineering.'],
-    ],
-  },
-  {
-    id: 'features',
-    type: 'single',
-    number: '04',
-    title: 'Feature Engineering',
-    subtitle: 'Build the model input',
-    realTitle: 'Raw payment data becomes model features',
-    realText:
-      'A real fraud platform continuously transforms transaction history and current context into a consistent model-ready feature vector.',
-    steps: [
-      ['01', 'Collect raw transaction signals', 'Current transaction and relevant history are gathered.'],
-      ['02', 'Transform values', 'Raw values are converted into the representations expected by the model.'],
-      ['03', 'Build feature vector', 'The required feature columns are assembled in the trained schema order.'],
-      ['04', 'Send to AI layer', 'The completed vector becomes the TabTransformer input.'],
-    ],
-  },
-  {
-    id: 'tab',
-    type: 'single',
-    number: '05',
-    title: 'TabTransformer Fraud Detection',
-    subtitle: 'Classify transaction behaviour',
-    realTitle: 'Real-time fraud scoring service',
-    realText:
-      'A production fraud service can evaluate structured transaction features and return a risk classification or probability before authorization.',
-    steps: [
-      ['01', 'Feature vector enters model', 'Numerical and categorical transaction features are supplied to the model.'],
-      ['02', 'Attention evaluates relationships', 'The transformer learns interactions between the structured features.'],
-      ['03', 'Fraud probability is produced', 'The model calculates the probabilities for the transaction classes.'],
-      ['04', 'Operating threshold is applied', 'The model output is converted into the fraud/legitimate decision used by the pipeline.'],
-    ],
-  },
-  {
-    id: 'xai',
-    type: 'single',
-    number: '06',
-    title: 'Explainable AI',
-    subtitle: 'SHAP / LIME',
-    realTitle: 'Explain why the model reached its result',
-    realText:
-      'An authorized user, analyst or security system can inspect which model features contributed to an AI-layer decision.',
-    steps: [
-      ['01', 'Prediction is received', 'The explanation layer receives the completed model prediction.'],
-      ['02', 'SHAP contribution view', 'Feature contributions are calculated around the model output.'],
-      ['03', 'LIME local explanation', 'A second local explanation view shows influential feature behaviour.'],
-      ['04', 'Explanation is attached', 'The result dashboard presents the prediction together with its supporting signals.'],
-    ],
-  },
-  {
-    id: 'decision',
-    type: 'branch',
-    number: '07',
-    title: 'Result Dashboard',
-    subtitle: 'Final security decision',
-    realTitle: 'Payment authorization response',
-    realText:
-      'A real payment system could use the result to allow, decline, hold, step up authentication, or route the transaction for review.',
-    steps: [
-      ['01', 'Security result arrives', 'The backend returns the actual execution path and decision.'],
-      ['02', 'Decision is displayed', 'The dashboard shows whether the transaction was blocked or allowed.'],
-      ['03', 'Reason is shown', 'The relevant Layer 1 rule or AI explanation is presented.'],
-      ['04', 'Payment system reacts', 'A real deployment could authorize, decline, hold or review the transaction.'],
-    ],
-  },
-];
+const FEATS = ['known_device_flag', 'device_changed_flag', 'device_type', 'browser_name', 'operating_system', 'transactions_last_1min', 'transactions_last_5min', 'transactions_last_10min', 'transaction_amount', 'previous_transaction_amount', 'session_risk_score'];
 
-const futureExtensions = [
-  {
-    title: 'Browser Extension',
-    text:
-      'Move Stage 1 closer to the browser so payment destinations can be checked before users interact with them.',
-  },
-  {
-    title: 'Payment Security Gateway',
-    text:
-      'Place the security pipeline in front of a payment-processing service so transactions are checked before downstream processing.',
-  },
-  {
-    title: 'Financial-System Integration',
-    text:
-      'Connect the pipeline to live transaction streams, institution-specific signals and operational fraud systems.',
-  },
-];
+const NODES = {
+  user: { n: '00', t: 'User', sub: 'Payment journey begins', title: 'A customer clicks a payment link', intro: 'In a real deployment a browser extension sits between the click and the payment page.', steps: [['Customer clicks the link', 'A link in an email, chat or website asks the customer to pay.'], ['Browser starts navigating', 'The extension pauses the navigation before the page loads.'], ['URL handed to security', 'Only the destination URL is passed to AttentionPay Stage 1.']] },
+  bert: { n: '01', t: 'Stage 1: BERT', sub: 'Phishing detection', title: 'Extension verifies the destination with BERT', intro: 'Before any payment page loads, the URL is checked by the trained BERT classifier.', toggle: true, steps: [['Extension captures the URL', 'The destination is read from the paused navigation.'], ['URL is tokenized', 'The tokenizer splits the URL into sub-word tokens BERT understands.'], ['BERT analyses the tokens', 'Attention weighs each token in context; odd tokens stand out.'], ['Prediction is produced', 'Phishing and legitimate probabilities are returned.'], ['Security gate reacts', 'Legitimate: the page opens and Stage 2 unlocks. Phishing: the page is blocked and the tokens are highlighted.']] },
+  transaction: { n: '02', t: 'Stage 2: Transaction', sub: 'Retrieve context', title: 'Payment API supplies transaction context', intro: 'A real bank or gateway already holds this data. We simulated it with PostgreSQL.', steps: [['Payment request starts', 'The customer confirms a payment in the app.'], ['Backend receives it', 'The protected payment API is the next security boundary.'], ['Context is retrieved', 'Amount, device, location, time and endpoint become available.'], ['Security pipeline starts', 'The transaction is handed to Layer 1.']] },
+  layer1: { n: '03', t: 'Layer 1 Checks', sub: 'API Route · Impossible Travel', title: 'Gateway runs deterministic rules first', intro: 'Cheap, explainable rules run before spending compute on the AI model.', toggle: true, steps: [['API Route Integrity', 'Was the request sent to the expected payment endpoint?'], ['Impossible Travel', 'Distance between the previous and current location divided by elapsed time.'], ['Decision gate', 'Any failed rule stops the transaction immediately.'], ['Outcome', 'Pass: continue to feature engineering. Block: AI is skipped and the rule is explained.']] },
+  features: { n: '04', t: 'Feature Engineering', sub: 'Build the model input', title: 'Raw payment data becomes 11 model features', intro: 'A fraud platform turns transaction history and context into a fixed-order vector.', steps: [['Collect raw signals', 'Current transaction plus recent history are gathered.'], ['Transform values', 'Categories are encoded and numbers scaled with the saved scaler.'], ['Build the vector', 'All 11 features are assembled in the exact training order.'], ['Send to AI layer', 'The vector becomes the TabTransformer input.']] },
+  tab: { n: '05', t: 'TabTransformer', sub: 'Fraud detection', title: 'Real-time fraud scoring before authorization', intro: 'The model scores behaviour: is this transaction unusual for this context?', toggle: true, steps: [['Vector enters the model', '3 categorical and 8 numerical inputs are supplied.'], ['Attention links features', 'The transformer learns interactions, e.g. new device with high amount.'], ['Fraud probability', 'The model outputs a probability for the transaction.'], ['Threshold applied', 'Probability above the 0.332 operating threshold is classified as fraud.']] },
+  xai: { n: '06', t: 'Explainable AI', sub: 'SHAP / LIME', title: 'Analysts see why the model decided', intro: 'Explanations help fraud teams and customers trust and challenge decisions.', toggle: true, steps: [['Prediction received', 'The explainer gets the exact input used for prediction.'], ['SHAP contributions', 'Each feature pushes the score towards fraud or legitimate.'], ['LIME local view', 'A second, local explanation confirms the main drivers.'], ['Explanation attached', 'The decision is stored with its supporting signals.']] },
+  decision: { n: '07', t: 'Result Dashboard', sub: 'Final decision', title: 'The payment system acts on the result', intro: 'The decision travels back to the bank or gateway, which chooses the action.', toggle: true, steps: [['Result arrives', 'The backend returns decision, source and execution path.'], ['Decision is shown', 'Allowed or blocked, with the layer that decided.'], ['Reason is shown', 'Rule explanation or SHAP/LIME, whichever made the decision.'], ['Payment system reacts', 'Approve, step-up authentication, hold for review, or decline.']] },
+};
 
-function SimulationVisual({ nodeId, stepIndex }) {
-  const common = `hw-sim-visual hw-sim-${nodeId}`;
+function Lane({ actors, pos }) {
+  return (
+    <div className="hiw-lane">
+      {actors.map(([icon, label], i) => (
+        <div key={label} className={'hiw-actor' + (i <= pos ? ' on' : '')}><span>{icon}</span><small>{label}</small></div>
+      ))}
+      <i className="hiw-packet" style={{ left: `${((pos + 0.5) * 100) / actors.length}%` }} />
+    </div>
+  );
+}
 
-  if (nodeId === 'user') {
-    return (
-      <div className={common}>
-        <div className="hw-browser">
-          <div className="hw-browser-bar">
-            <span />
-            <span />
-            <span />
-            <div>secure-payment.example</div>
-          </div>
-          <div className="hw-browser-body">
-            <div className={`hw-link-card ${stepIndex >= 0 ? 'visible' : ''}`}>
-              <span className="hw-link-icon">↗</span>
-              <div>
-                <strong>Pay securely</strong>
-                <small>Click to continue to payment</small>
-              </div>
-              <b className="hw-click-cursor">⌁</b>
-            </div>
-            <div className="hw-browser-arrow">↓</div>
-            <div className={`hw-extension-chip ${stepIndex >= 1 ? 'visible' : ''}`}>
-              <i>✓</i> Security extension inspecting destination
-            </div>
-          </div>
-        </div>
+const GOOD_T = ['https', ':', '//', 'pay', '.', 'example', '.', 'com', '/', 'checkout'];
+const BAD_T = ['https', ':', '//', 'secure', '-', 'paypa', '##1', '-', 'login', '.', 'xyz', '/', 'verify'];
+const SUS = ['paypa', '##1', 'xyz', 'login'];
+
+const SCENES = {
+  user: (s) => (
+    <>
+      <Lane actors={[['🧑', 'Customer'], ['🌐', 'Browser'], ['🛡️', 'Extension']]} pos={s} />
+      <div className="hiw-browser">
+        <div className="hiw-bar">● ● ●&nbsp; payment-link.example</div>
+        <div className={'hiw-link' + (s === 0 ? ' click' : '')}>Pay securely ↗<b className="hiw-cursor">➤</b></div>
+        {s >= 1 && <div className="hiw-note">{s >= 2 ? '🛡️ URL sent to AttentionPay Stage 1' : '⏸ Navigation paused by extension'}</div>}
       </div>
-    );
-  }
-
-  if (nodeId === 'bert') {
+    </>
+  ),
+  bert: (s, bad) => {
+    const toks = bad ? BAD_T : GOOD_T;
+    const url = bad ? 'https://secure-paypa1-login.xyz/verify' : 'https://pay.example.com/checkout';
     return (
-      <div className={common}>
-        <div className="hw-url-line">
-          <span>https://</span>
-          <b>secure-pay.example/login</b>
-        </div>
-        <div className="hw-token-row">
-          {['https', '://', 'secure', '-', 'pay', '.', 'example', '/', 'login'].map(
-            (token, i) => (
-              <span
-                key={`${token}-${i}`}
-                className={i <= stepIndex + 1 ? 'token-show' : ''}
-              >
-                {token}
+      <>
+        <Lane actors={[['🌐', 'Browser'], ['🛡️', 'Extension'], ['🧠', 'BERT']]} pos={s === 0 ? 0 : s === 1 ? 1 : 2} />
+        {s < 1 ? <div className="hiw-url">{url}</div> : (
+          <div className="hiw-tokens split">
+            {toks.map((t, i) => (
+              <span key={i} className={'hiw-tok' + (s >= 2 && bad && SUS.includes(t) ? ' sus' : '')} style={{ transitionDelay: `${i * 50}ms` }}>
+                {t}{s >= 2 && <i style={{ height: 6 + ((i * 7) % 5) * 5 + (bad && SUS.includes(t) ? 16 : 0) }} />}
               </span>
-            ),
-          )}
-        </div>
-        <div className="hw-bert-box">
-          <div className="hw-model-orbit">
-            <span />
-            <span />
-            <span />
-            <strong>BERT</strong>
+            ))}
           </div>
-          <div className="hw-model-track">
-            <i style={{ width: `${Math.min(100, 24 + stepIndex * 19)}%` }} />
+        )}
+        {s >= 3 && (
+          <div className="hiw-two">
+            <div className={'hiw-card' + (bad ? '' : ' ok')}><small>LEGITIMATE</small><b>{bad ? '3%' : '98%'}</b></div>
+            <div className={'hiw-card' + (bad ? ' no' : '')}><small>PHISHING</small><b>{bad ? '97%' : '2%'}</b></div>
           </div>
-          <small>
-            {stepIndex === 0
-              ? 'capturing URL'
-              : stepIndex === 1
-                ? 'tokenizing URL'
-                : stepIndex === 2
-                  ? 'transformer analysis'
-                  : stepIndex === 3
-                    ? 'classification'
-                    : 'security gate'}
-          </small>
-        </div>
-        <div className="hw-prediction-row">
-          <div className={stepIndex >= 3 ? 'prediction-active' : ''}>
-            <span>LEGITIMATE</span>
-            <b>{stepIndex >= 3 ? '98.7%' : '—'}</b>
-          </div>
-          <div className={stepIndex >= 3 ? 'prediction-risk' : ''}>
-            <span>PHISHING</span>
-            <b>{stepIndex >= 3 ? '1.3%' : '—'}</b>
-          </div>
-        </div>
-        <div className={`hw-gate ${stepIndex >= 4 ? 'gate-open' : ''}`}>
-          <span>{stepIndex >= 4 ? '✓' : '○'}</span>
-          {stepIndex >= 4 ? 'LEGITIMATE → CONTINUE TO STAGE 2' : 'SECURITY GATE'}
-        </div>
-      </div>
+        )}
+        {s >= 4 && <div className={'hiw-banner ' + (bad ? 'no' : 'ok')}>{bad ? '⛔ Page blocked. Warning shown with highlighted tokens.' : '✓ Page opens. Stage 2 unlocked.'}</div>}
+      </>
     );
-  }
-
-  if (nodeId === 'transaction') {
+  },
+  transaction: (s) => (
+    <>
+      <Lane actors={[['📱', 'Payment app'], ['🏦', 'Payment API'], ['🧠', 'Fraud service']]} pos={[0, 1, 1, 2][s]} />
+      <div className="hiw-chips">
+        {['₹4,850', 'known device', 'Bengaluru', '14:32:05', '/pay/v1'].map((c, i) => <span key={c} className={s >= 2 ? 'on' : ''} style={{ transitionDelay: `${i * 90}ms` }}>{c}</span>)}
+      </div>
+      <div className={'hiw-banner ' + (s >= 3 ? 'ok' : '')}>{s >= 3 ? '→ Layer 1 security checks' : 'Waiting for transaction context…'}</div>
+    </>
+  ),
+  layer1: (s, bad) => (
+    <>
+      <div className="hiw-two">
+        <div className={'hiw-card' + (s >= 1 ? ' ok' : '')}><small>API ROUTE INTEGRITY</small><b>{s >= 1 ? 'PASS' : '…'}</b><em>/pay/v1 = /pay/v1</em></div>
+        <div className={'hiw-card' + (s >= 2 ? (bad ? ' no' : ' ok') : '')}><small>IMPOSSIBLE TRAVEL</small><b>{s >= 2 ? (bad ? 'FAIL' : 'PASS') : s >= 1 ? '…' : ''}</b><em>{bad ? 'Bengaluru → London in 18 min ≈ 26,000 km/h' : 'Bengaluru → Bengaluru, 4 min'}</em></div>
+      </div>
+      <div className="hiw-route"><span>Previous</span><i className={s >= 1 ? 'go' + (bad ? ' far' : '') : ''} /><span>Current</span></div>
+      {s >= 2 && <div className={'hiw-banner ' + (bad ? 'no' : 'ok')}>{bad ? '⛔ BLOCK. AI skipped, rule explanation returned.' : '✓ PASS → Feature Engineering'}</div>}
+    </>
+  ),
+  features: (s) => {
+    const c = [3, 7, 11, 11][s];
     return (
-      <div className={common}>
-        <div className="hw-payment-card">
-          <div className="hw-payment-header">
-            <span>PAYMENT API</span>
-            <b>₹ 4,850.00</b>
-          </div>
-          <div className="hw-payment-row"><span>Receiver</span><b>merchant@example</b></div>
-          <div className="hw-payment-row"><span>Device</span><b>Known device</b></div>
-          <div className="hw-payment-row"><span>Location</span><b>Bengaluru, IN</b></div>
-        </div>
-        <div className="hw-data-packets">
-          {[0, 1, 2, 3].map((i) => (
-            <i key={i} className={i <= stepIndex + 1 ? 'packet-on' : ''}>◆</i>
-          ))}
-        </div>
-        <div className={`hw-server ${stepIndex >= 2 ? 'server-on' : ''}`}>
-          <span>API</span>
-          <strong>Transaction context</strong>
-          <small>PostgreSQL → security pipeline</small>
-        </div>
-      </div>
+      <>
+        <div className="hiw-raw">RAW TRANSACTION {s >= 1 && '→ encode + scale'}</div>
+        <div className="hiw-feats">{FEATS.map((f, i) => <span key={f} className={i < c ? 'on' : ''}>{i + 1}. {f}</span>)}</div>
+        <div className={'hiw-banner ' + (s >= 3 ? 'ok' : '')}>{s >= 3 ? '[ 11 features, fixed order ] → TabTransformer' : 'building feature vector…'}</div>
+      </>
     );
-  }
-
-  if (nodeId === 'layer1') {
+  },
+  tab: (s, bad) => {
+    const p = bad ? 81 : 14;
     return (
-      <div className={common}>
-        <div className="hw-layer-grid">
-          <div className={`hw-rule-card ${stepIndex >= 0 ? 'rule-on' : ''}`}>
-            <span>01</span>
-            <strong>API Route Integrity</strong>
-            <small>expected endpoint</small>
-            <b>{stepIndex >= 0 ? 'PASS' : 'CHECKING'}</b>
-          </div>
-          <div className={`hw-rule-card ${stepIndex >= 1 ? 'rule-on' : ''}`}>
-            <span>02</span>
-            <strong>Impossible Travel</strong>
-            <small>location + time</small>
-            <b>{stepIndex >= 1 ? 'PASS' : 'WAITING'}</b>
-          </div>
+      <>
+        <div className="hiw-vec">{FEATS.map((f, i) => <i key={f} className={s >= 0 ? 'on' : ''} style={{ transitionDelay: `${i * 40}ms` }} />)}</div>
+        <div className={'hiw-attn' + (s >= 1 ? ' on' : '')}><b>ATTENTION</b><small>feature ↔ feature interactions</small></div>
+        <div className="hiw-meter">
+          <div className="hiw-fill" style={{ width: s >= 2 ? `${p}%` : '0%' }} />
+          <div className="hiw-mark" style={{ left: '33.2%' }}><small>0.332</small></div>
         </div>
-        <div className="hw-travel-line">
-          <span className="travel-city">Previous</span>
-          <i className={stepIndex >= 1 ? 'travel-on' : ''} />
-          <span className="travel-dot" />
-          <span className="travel-city">Current</span>
-        </div>
-        <div className={`hw-layer-decision ${stepIndex >= 2 ? 'decision-pass' : ''}`}>
-          {stepIndex >= 2 ? '✓ PASS → FEATURE ENGINEERING' : 'SECURITY RULE GATE'}
-        </div>
-      </div>
+        <div className="hiw-meter-l">Fraud probability {s >= 2 ? (p / 100).toFixed(2) : '—'} <em>(illustrative)</em></div>
+        {s >= 3 && <div className={'hiw-banner ' + (bad ? 'no' : 'ok')}>{bad ? 'Above threshold → FRAUD' : 'Below threshold → LEGITIMATE'}</div>}
+      </>
     );
-  }
-
-  if (nodeId === 'features') {
-    const features = ['amount', 'device', 'velocity', 'browser', 'history', 'risk'];
+  },
+  xai: (s, bad) => {
+    const rows = bad
+      ? [['session_risk_score', 31], ['device_changed_flag', 22], ['transaction_amount', 18], ['known_device_flag', -6], ['device_type', -3]]
+      : [['known_device_flag', -24], ['session_risk_score', -17], ['transaction_amount', 8], ['device_changed_flag', -6], ['device_type', 3]];
     return (
-      <div className={common}>
-        <div className="hw-feature-source">
-          <span>RAW TRANSACTION</span>
-          <i>→</i>
-        </div>
-        <div className="hw-feature-cloud">
-          {features.map((feature, i) => (
-            <span key={feature} className={i <= stepIndex + 1 ? 'feature-on' : ''}>
-              {feature}
-            </span>
-          ))}
-        </div>
-        <div className="hw-feature-vector">
-          <span>[</span>
-          {features.map((_, i) => (
-            <i key={i} className={i <= stepIndex + 1 ? 'vector-on' : ''} />
-          ))}
-          <span>]</span>
-        </div>
-        <small className="hw-feature-status">
-          {stepIndex >= 3 ? 'MODEL-READY FEATURE VECTOR' : 'building feature vector…'}
-        </small>
-      </div>
-    );
-  }
-
-  if (nodeId === 'tab') {
-    return (
-      <div className={common}>
-        <div className="hw-transformer-input">
-          {['amount', 'device', 'velocity', 'history'].map((item, i) => (
-            <span key={item} className={i <= stepIndex ? 'input-on' : ''}>{item}</span>
-          ))}
-        </div>
-        <div className="hw-attention-core">
-          <div className="hw-attention-lines">
-            <i />
-            <i />
-            <i />
-            <i />
+      <>
+        <div className="hiw-xai-h"><span className={s >= 1 ? 'on' : ''}>SHAP</span><span className={s >= 2 ? 'on' : ''}>LIME</span></div>
+        {rows.map(([f, v], i) => (
+          <div className="hiw-xrow" key={f}>
+            <small>{f}</small>
+            <div><b className={v > 0 ? 'up' : 'dn'} style={{ width: s >= 1 ? Math.abs(v) * 1.6 : 0, [v > 0 ? 'left' : 'right']: '50%' }} /></div>
+            <div><b className={v > 0 ? 'up' : 'dn'} style={{ width: s >= 2 ? Math.abs(v) * 1.3 : 0, [v > 0 ? 'left' : 'right']: '50%' }} /></div>
           </div>
-          <strong>ATTENTION</strong>
-          <small>feature interactions</small>
-        </div>
-        <div className="hw-model-output">
-          <div>
-            <span>FRAUD</span>
-            <b style={{ height: `${stepIndex >= 2 ? 68 : 18}%` }} />
-            <small>{stepIndex >= 2 ? '68%' : '—'}</small>
-          </div>
-          <div>
-            <span>LEGITIMATE</span>
-            <b style={{ height: `${stepIndex >= 2 ? 32 : 18}%` }} />
-            <small>{stepIndex >= 2 ? '32%' : '—'}</small>
-          </div>
-        </div>
-        <div className={`hw-threshold ${stepIndex >= 3 ? 'threshold-on' : ''}`}>
-          {stepIndex >= 3 ? 'MODEL DECISION → FRAUD' : 'OPERATING THRESHOLD'}
-        </div>
-      </div>
+        ))}
+        <div className="hiw-legend">red pushes towards fraud · green towards legitimate · <em>illustrative</em></div>
+        {s >= 3 && <div className="hiw-banner ok">Top signals attached to the decision record</div>}
+      </>
     );
-  }
-
-  if (nodeId === 'xai') {
-    const bars = [
-      ['velocity', 82],
-      ['device_changed', 64],
-      ['amount', 49],
-      ['history', 31],
-      ['browser', 18],
-    ];
-    return (
-      <div className={common}>
-        <div className="hw-xai-header">
-          <span className={stepIndex >= 1 ? 'xai-active' : ''}>SHAP</span>
-          <i>+</i>
-          <span className={stepIndex >= 2 ? 'xai-active' : ''}>LIME</span>
-        </div>
-        <div className="hw-xai-bars">
-          {bars.map(([label, width], i) => (
-            <div key={label}>
-              <span>{label}</span>
-              <i>
-                <b style={{ width: stepIndex >= 1 && i <= stepIndex + 1 ? `${width}%` : '0%' }} />
-              </i>
-            </div>
-          ))}
-        </div>
-        <div className={`hw-xai-callout ${stepIndex >= 3 ? 'xai-callout-on' : ''}`}>
-          {stepIndex >= 3
-            ? 'Top contributing signals attached to result'
-            : 'calculating local explanation…'}
-        </div>
+  },
+  decision: (s, bad) => (
+    <>
+      <Lane actors={[['🛡️', 'AttentionPay'], ['🏦', 'Bank / gateway'], ['🧑', 'Customer']]} pos={[0, 0, 1, 2][s]} />
+      <div className={'hiw-banner ' + (s >= 1 ? (bad ? 'no' : 'ok') : '')}>{s >= 1 ? (bad ? 'BLOCK' : 'CONTINUE') : 'waiting for decision…'}{s >= 2 && (bad ? ' · high fraud probability, top driver session_risk_score' : ' · checks passed, low fraud probability')}</div>
+      <div className="hiw-acts">
+        {[['Approve', !bad], ['Step-up auth', false], ['Hold for review', bad], ['Decline', bad]].map(([a, on]) => <span key={a} className={s >= 3 && on ? (bad ? 'no' : 'ok') : ''}>{a}</span>)}
       </div>
-    );
-  }
+    </>
+  ),
+};
 
-  if (nodeId === 'decision') {
-    return (
-      <div className={common}>
-        <div className="hw-decision-gate">
-          <div className="hw-gate-post" />
-          <div className={`hw-gate-door ${stepIndex >= 2 ? 'door-open' : ''}`}>
-            <span>{stepIndex >= 2 ? '✓' : '!'}</span>
-          </div>
-          <div className="hw-gate-road" />
-        </div>
-        <div className="hw-result-status">
-          <span>{stepIndex >= 2 ? 'SECURITY RESULT' : 'PROCESSING RESULT'}</span>
-          <strong>{stepIndex >= 2 ? 'TRANSACTION REVIEWED' : 'WAITING FOR DECISION'}</strong>
-        </div>
-        <div className={`hw-result-chip ${stepIndex >= 3 ? 'result-ready' : ''}`}>
-          {stepIndex >= 3 ? 'DASHBOARD → RESULT + REASON' : 'preparing response…'}
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-}
-
-function SimulationModal({ node, onClose }) {
-  const [stepIndex, setStepIndex] = useState(0);
-  const [playing, setPlaying] = useState(true);
+function Expanded({ id, rect, startBad, onClose }) {
+  const node = NODES[id];
+  const [phase, setPhase] = useState('from');
+  const [s, setS] = useState(0);
+  const [play, setPlay] = useState(true);
+  const [bad, setBad] = useState(startBad);
+  const last = node.steps.length - 1;
 
   useEffect(() => {
-    setStepIndex(0);
-    setPlaying(true);
-  }, [node.id]);
-
+    const r = requestAnimationFrame(() => requestAnimationFrame(() => setPhase('open')));
+    return () => cancelAnimationFrame(r);
+  }, []);
   useEffect(() => {
-    if (!playing) return undefined;
+    if (!play || phase !== 'open') return undefined;
+    const t = setTimeout(() => (s < last ? setS(s + 1) : setPlay(false)), 2300);
+    return () => clearTimeout(t);
+  }, [s, play, phase, last]);
+  const close = () => { setPhase('closing'); setTimeout(onClose, 450); };
+  useEffect(() => {
+    const k = (e) => e.key === 'Escape' && close();
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, []);
 
-    const timer = window.setInterval(() => {
-      setStepIndex((current) => {
-        if (current >= node.steps.length - 1) {
-          setPlaying(false);
-          return current;
-        }
-        return current + 1;
-      });
-    }, 1700);
-
-    return () => window.clearInterval(timer);
-  }, [node.id, node.steps.length, playing]);
-
-  const progress = ((stepIndex + 1) / node.steps.length) * 100;
-
-  return (
-    <div
-      className="hw-modal-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <section
-        className="hw-simulation-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="hw-simulation-title"
-      >
-        <button type="button" className="hw-modal-close" onClick={onClose} aria-label="Close">
-          ×
-        </button>
-
-        <div className="hw-modal-head">
-          <div>
-            <span>REAL-WORLD SIMULATION · STEP {node.number}</span>
-            <h2 id="hw-simulation-title">{node.realTitle}</h2>
-            <p>{node.realText}</p>
-          </div>
-          <div className="hw-modal-stage">
-            <strong>{node.number}</strong>
-            <small>SELECTED BLOCK</small>
-          </div>
-        </div>
-
-        <div className="hw-simulation-progress">
-          <i style={{ width: `${progress}%` }} />
-        </div>
-
-        <div className="hw-simulation-layout">
-          <div className="hw-visual-shell">
-            <div className="hw-visual-label">
-              <span>LIVE CONCEPT ANIMATION</span>
-              <b>{playing ? 'RUNNING' : 'COMPLETE'}</b>
-            </div>
-            <SimulationVisual nodeId={node.id} stepIndex={stepIndex} />
-          </div>
-
-          <div className="hw-step-panel">
-            <div className="hw-step-label">
-              <span>WHAT IS HAPPENING NOW</span>
-              <strong>{stepIndex + 1}/{node.steps.length}</strong>
-            </div>
-
-            <div className="hw-current-step">
-              <span>{node.steps[stepIndex][0]}</span>
-              <div>
-                <strong>{node.steps[stepIndex][1]}</strong>
-                <p>{node.steps[stepIndex][2]}</p>
-              </div>
-            </div>
-
-            <div className="hw-timeline">
-              {node.steps.map(([number, title], index) => (
-                <button
-                  type="button"
-                  key={number}
-                  className={[
-                    index === stepIndex ? 'current' : '',
-                    index < stepIndex ? 'done' : '',
-                  ].join(' ')}
-                  onClick={() => {
-                    setStepIndex(index);
-                    setPlaying(false);
-                  }}
-                >
-                  <span>{number}</span>
-                  <strong>{title}</strong>
-                </button>
-              ))}
-            </div>
-
-            <div className="hw-modal-actions">
-              <button
-                type="button"
-                className="hw-replay"
-                onClick={() => {
-                  setStepIndex(0);
-                  setPlaying(true);
-                }}
-              >
-                ↻ Replay
-              </button>
-              <button type="button" className="hw-close-action" onClick={onClose}>
-                Back to flowchart
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="hw-modal-note">
-          <strong>Conceptual real-world view:</strong>
-          This animation illustrates how the security concept could operate in
-          a production environment. It does not claim that AttentionPay
-          currently integrates with a live browser, bank, payment gateway, or
-          financial institution.
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function FlowConnector({ branch, active }) {
-  if (branch) {
-    return (
-      <div className={`hw-branch-connector ${active ? 'active' : ''}`} aria-hidden="true">
-        <div className="hw-branch-line" />
-        <div className="hw-branch-left">
-          <span>BLOCK</span>
-          <b>↓</b>
-          <em>BLOCKED</em>
-        </div>
-        <div className="hw-branch-right">
-          <span>PASS</span>
-          <b>↓</b>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`hw-main-connector ${active ? 'active' : ''}`} aria-hidden="true">
-      <span />
-      <b>↓</b>
-    </div>
-  );
-}
-
-export default function HowItWorksPage() {
-  const [selectedId, setSelectedId] = useState(null);
-  const selectedNode = useMemo(
-    () => flowNodes.find((node) => node.id === selectedId) || null,
-    [selectedId],
-  );
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const w = Math.min(900, Math.round(vw * 0.78)), h = Math.min(580, Math.round(vh * 0.72), vh - 110);
+  const top = Math.max(88, Math.round((vh - h) / 2) + 24);
+  const open = phase === 'open';
+  const style = open ? { left: (vw - w) / 2, top, width: w, height: h } : { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+  const replay = () => { setS(0); setPlay(true); };
 
   return (
     <>
-      <section className="hero compact-page-hero hw-flowchart-hero">
-        <div>
-          <span className="eyebrow">ATTENTIONPAY · SECURITY ARCHITECTURE</span>
-          <h1>How AttentionPay protects a transaction.</h1>
-          <p>
-            Click any block in the flowchart. The rest of the architecture
-            fades away and the selected block opens a step-by-step simulation
-            of how that security stage could work in the real world.
-          </p>
-        </div>
-
-        <div className="hw-flowchart-summary">
-          <span>INTERACTIVE FLOW</span>
-          <strong>USER → BERT → RULES → AI → XAI → RESULT</strong>
-          <small>Click a block to run its simulation</small>
+      <div className={'hiw-scrim' + (open ? ' open' : '')} onMouseDown={close} />
+      <section className={'hiw-card-x' + (open ? ' open' : '')} style={style} role="dialog" aria-modal="true" aria-label={node.title}>
+        <div className="hiw-x-body">
+          <header>
+            <span className="hiw-num">{node.n}</span>
+            <div><small>REAL-WORLD SIMULATION</small><h2>{node.title}</h2><p>{node.intro}</p></div>
+            <button type="button" className="hiw-x" onClick={close} aria-label="Close">×</button>
+          </header>
+          <div className="hiw-prog"><i style={{ width: `${((s + 1) / node.steps.length) * 100}%` }} /></div>
+          <div className="hiw-grid">
+            <div className="hiw-scene">{SCENES[id](s, bad)}</div>
+            <ol className="hiw-steps">
+              {node.steps.map(([t, d], i) => (
+                <li key={t} className={i === s ? 'cur' : i < s ? 'done' : ''}>
+                  <button type="button" onClick={() => { setS(i); setPlay(false); }}>
+                    <b>{i + 1}</b><span><strong>{t}</strong>{i === s && <em>{d}</em>}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <footer>
+            <button type="button" onClick={replay}>↻ Replay</button>
+            {play ? <button type="button" onClick={() => setPlay(false)}>❚❚ Pause</button> : s < last && <button type="button" onClick={() => setPlay(true)}>▶ Play</button>}
+            {node.toggle && <button type="button" className={bad ? 'tog bad' : 'tog'} onClick={() => { setBad(!bad); replay(); }}>{bad ? '⛔ Blocked case: switch to normal' : '✓ Normal case: show blocked case'}</button>}
+            <small>Conceptual view. AttentionPay does not connect to a real bank, browser or payment gateway.</small>
+          </footer>
         </div>
       </section>
+    </>
+  );
+}
 
-      <section className="section-card hw-flowchart-card">
-        <div className="hw-flowchart-heading">
-          <div>
-            <span className="eyebrow">CLICK ANY BLOCK</span>
-            <h2>AttentionPay security flowchart</h2>
-            <p>
-              The structure below mirrors the actual decision flow: phishing
-              blocks at Stage 1, Layer 1 can block before AI, and only the
-              passing path reaches the model and explainability stages.
-            </p>
-          </div>
+
+function Group({ tag, title, sub, real, children }) {
+  return (
+    <div className="hiw-group">
+      <div className="hiw-zl"><small>{tag}</small><strong>{title}</strong><span>{sub}</span><em>Real world: {real}</em></div>
+      {children}
+    </div>
+  );
+}
+
+const ROWS = [
+  ['🔗', 'Payment URL', 'Form input', 'The user pastes a URL into the security page.', 'Extension / gateway', 'The link is intercepted automatically when the customer clicks it in a browser, email or chat.'],
+  ['💳', 'Transaction source', 'Scenario selector', 'A scenario card picks a controlled transaction.', 'Live payment event', 'The bank, merchant or payment API sends the real payment request at authorization time.'],
+  ['🗄️', 'Transaction data', 'PostgreSQL rows', 'Seeded demo_transactions table.', 'Live data + history', 'Streaming transaction store combined with the customer’s device, session and spending history.'],
+  ['📍', 'Location and time', 'Stored coordinates', 'Fixed previous/current latitude, longitude and timestamps.', 'Real signals', 'IP geolocation, consented device location, and the bank’s record of the previous transaction.'],
+  ['🛣️', 'API route check', 'Simulated fields', 'Expected and actual endpoint saved in the row.', 'Gateway metadata', 'The gateway verifies the actual request path, tokens and signatures of the call.'],
+  ['🧠', 'Fraud scoring', 'FastAPI + saved model', 'TabTransformer trained offline on a 200,000-row dataset.', 'Scoring service', 'A low-latency model service that is monitored and retrained on confirmed fraud outcomes.'],
+  ['🔍', 'Explanations', 'Result page', 'SHAP/LIME shown once on the dashboard.', 'Audit record', 'Stored with every decision so analysts, auditors and dispute teams can review why it happened.'],
+  ['✅', 'Final action', 'Blocked / Approved', 'A status card on the dashboard.', 'Authorization response', 'Approve, decline, ask for step-up authentication such as an OTP, or hold for analyst review.'],
+];
+
+const SAME = [
+  ['Same order of checks', 'URL first, deterministic rules next, AI only after both pass.'],
+  ['Same feature contract', 'The 11 features keep the same order in training and inference.'],
+  ['Same explanation logic', 'Rule blocks are explained by rules, AI decisions by SHAP/LIME.'],
+];
+
+const FUTURE = [
+  ['Browser Extension', 'Move Stage 1 into the browser so destinations are checked before the user interacts.'],
+  ['Payment Security Gateway', 'Place the pipeline in front of payment processing so every transaction is screened first.'],
+  ['Financial-System Integration', 'Connect live transaction streams and institution signals to the fraud pipeline.'],
+];
+
+export default function HowItWorksPage() {
+  const [sel, setSel] = useState(null);
+
+  const Node = ({ id, small }) => {
+    const n = NODES[id];
+    return (
+      <button type="button" className={'hiw-node' + (small ? ' small' : '') + (sel?.id === id ? ' lifted' : '')}
+        onClick={(e) => setSel({ id, rect: e.currentTarget.getBoundingClientRect(), bad: false })}>
+        <span className="hiw-num">{n.n}</span><strong>{n.t}</strong><small>{n.sub}</small>
+      </button>
+    );
+  };
+  const Arrow = () => <div className="hiw-arrow" aria-hidden="true"><i /></div>;
+  const Blocked = ({ id, tag }) => (
+    <button type="button" className="hiw-blocked" onClick={(e) => setSel({ id, rect: e.currentTarget.getBoundingClientRect(), bad: true })}>
+      <small>{tag}</small><strong>⛔ BLOCK</strong><em>see it happen</em>
+    </button>
+  );
+  const Branch = ({ id, bad, ok }) => (
+    <div className="hiw-branch">
+      <Blocked id={id} tag={bad} />
+      <div className="hiw-okwrap"><Arrow /><span className="hiw-okl">{ok}</span></div>
+    </div>
+  );
+
+  return (
+    <div className="hiw">
+      <section className="hiw-hero">
+        <span className="hiw-eyebrow">ATTENTIONPAY · HOW IT WORKS</span>
+        <h1>How AttentionPay would protect a real payment.</h1>
+        <p>Click any block. The block expands, the rest of the flowchart fades back, and a step-by-step animation shows how that stage would work in the real world, from a customer clicking a link to the bank acting on the result.</p>
+      </section>
+
+      <section className="hiw-panel">
+        <div className={'hiw-chart' + (sel ? ' dim' : '')}>
+          <Group tag="STAGE 1" title="URL security" sub="Before the payment page opens" real="Browser extension or link scanner">
+            <Node id="user" /><Arrow /><Node id="bert" />
+            <Branch id="bert" bad="PHISHING" ok="LEGITIMATE" />
+          </Group>
+          <Group tag="STAGE 2 · LAYER 1" title="Transaction security" sub="When the customer pays" real="Payment gateway / API layer">
+            <Node id="transaction" /><Arrow /><Node id="layer1" />
+            <Branch id="layer1" bad="RULE FAILS" ok="RULES PASS" />
+          </Group>
+          <Group tag="STAGE 2 · LAYER 2" title="AI fraud detection" sub="Runs only when Layer 1 passes" real="Real-time fraud scoring service">
+            <Node id="features" /><Arrow />
+            <Node id="tab" /><Arrow />
+            <Node id="xai" />
+          </Group>
+          <Arrow />
+          <Group tag="OUTCOME" title="Final decision" sub="Result returns to the payment system" real="Bank / payment authorization">
+            <Node id="decision" />
+          </Group>
         </div>
+        <div className="hiw-key"><span><i className="b" />Click a stage to expand it</span><span><i className="r" />Blocking path</span><span><i className="g" />Passing path</span></div>
+      </section>
 
-        <div className="hw-flowchart">
-          <button
-            type="button"
-            className={`hw-node hw-node-user ${selectedId === 'user' ? 'selected' : ''}`}
-            onClick={() => setSelectedId('user')}
-          >
-            <span className="hw-node-number">00</span>
-            <strong>User</strong>
-            <small>Payment journey begins</small>
-          </button>
-
-          <FlowConnector active={Boolean(selectedId)} />
-
-          <button
-            type="button"
-            className={`hw-node ${selectedId === 'bert' ? 'selected' : ''}`}
-            onClick={() => setSelectedId('bert')}
-          >
-            <span className="hw-node-number">01</span>
-            <strong>Stage 1: BERT<br />Phishing Detection</strong>
-            <small>Verify payment destination</small>
-          </button>
-
-          <FlowConnector branch active={selectedId === 'bert'} />
-
-          <div className="hw-branch-result">
-            <button
-              type="button"
-              className={`hw-branch-outcome danger ${selectedId === 'bert' ? 'related' : ''}`}
-              onClick={() => setSelectedId('bert')}
-            >
-              <span>PHISHING</span>
-              <b>↓</b>
-              <strong>BLOCK</strong>
-            </button>
-
-            <button
-              type="button"
-              className={`hw-node hw-node-stage2 ${selectedId === 'transaction' ? 'selected' : ''}`}
-              onClick={() => setSelectedId('transaction')}
-            >
-              <span className="hw-node-number">02</span>
-              <strong>Stage 2: Transaction<br />Security</strong>
-              <small>Retrieve transaction context</small>
-            </button>
-          </div>
-
-          <FlowConnector active={selectedId === 'transaction' || selectedId === 'layer1'} />
-
-          <button
-            type="button"
-            className={`hw-node hw-node-layer ${selectedId === 'layer1' ? 'selected' : ''}`}
-            onClick={() => setSelectedId('layer1')}
-          >
-            <span className="hw-node-number">03</span>
-            <strong>Layer 1 Security Checks</strong>
-            <small>API Route Integrity · Impossible Travel</small>
-          </button>
-
-          <FlowConnector branch active={selectedId === 'layer1'} />
-
-          <div className="hw-layer-outcomes">
-            <button
-              type="button"
-              className={`hw-branch-outcome danger ${selectedId === 'layer1' ? 'related' : ''}`}
-              onClick={() => setSelectedId('layer1')}
-            >
-              <span>BLOCK</span>
-              <b>↓</b>
-              <strong>BLOCKED</strong>
-            </button>
-
-            <div className="hw-pass-path">
-              <span className="hw-pass-label">PASS</span>
-              <b>↓</b>
-
-              <button
-                type="button"
-                className={`hw-node hw-node-small ${selectedId === 'features' ? 'selected' : ''}`}
-                onClick={() => setSelectedId('features')}
-              >
-                <span className="hw-node-number">04</span>
-                <strong>Feature Engineering</strong>
-              </button>
-
-              <FlowConnector active={selectedId === 'features'} />
-
-              <button
-                type="button"
-                className={`hw-node hw-node-small ${selectedId === 'tab' ? 'selected' : ''}`}
-                onClick={() => setSelectedId('tab')}
-              >
-                <span className="hw-node-number">05</span>
-                <strong>TabTransformer<br />Fraud Detection</strong>
-              </button>
-
-              <FlowConnector active={selectedId === 'tab'} />
-
-              <button
-                type="button"
-                className={`hw-node hw-node-small ${selectedId === 'xai' ? 'selected' : ''}`}
-                onClick={() => setSelectedId('xai')}
-              >
-                <span className="hw-node-number">06</span>
-                <strong>Explainable AI</strong>
-                <small>SHAP / LIME</small>
-              </button>
-
-              <FlowConnector active={selectedId === 'xai'} />
-
-              <button
-                type="button"
-                className={`hw-node hw-node-small hw-node-result ${selectedId === 'decision' ? 'selected' : ''}`}
-                onClick={() => setSelectedId('decision')}
-              >
-                <span className="hw-node-number">07</span>
-                <strong>Result Dashboard</strong>
-              </button>
+      <section className="hiw-panel">
+        <span className="hiw-eyebrow">DEMO VS REAL WORLD</span>
+        <h2>What changes outside the simulation?</h2>
+        <p className="hiw-sub">The security logic stays the same. What changes is where the data comes from and where the pipeline plugs in.</p>
+        <div className="hiw-cmp">
+          <div className="hiw-cmp-head"><span /><span>IN THIS PROJECT (DEMO)</span><span /><span>IN A REAL DEPLOYMENT</span></div>
+          {ROWS.map(([icon, name, dc, dt, rc, rt]) => (
+            <div className="hiw-cmp-row" key={name}>
+              <div className="hiw-cmp-k"><i>{icon}</i><strong>{name}</strong></div>
+              <div className="hiw-cmp-d"><b>{dc}</b><span>{dt}</span></div>
+              <div className="hiw-cmp-a">→</div>
+              <div className="hiw-cmp-r"><b>{rc}</b><span>{rt}</span></div>
             </div>
-          </div>
-        </div>
-
-        <div className="hw-flowchart-footer">
-          <span><i className="blue" /> Clickable security stage</span>
-          <span><i className="red" /> Blocking path</span>
-          <span><i className="green" /> Passing path</span>
-          <span>Click outside the simulation to return here</span>
-        </div>
-      </section>
-
-      <section className="section-card future-extensions-card">
-        <div className="hw-flowchart-heading">
-          <div>
-            <span className="eyebrow">POTENTIAL FUTURE EXTENSIONS</span>
-            <h2>Where this pipeline could go next.</h2>
-            <p>
-              These are future possibilities, not features currently
-              implemented in the AttentionPay demo.
-            </p>
-          </div>
-        </div>
-
-        <div className="future-extension-grid">
-          {futureExtensions.map((item, index) => (
-            <article className="future-extension" key={item.title}>
-              <span>0{index + 1}</span>
-              <h3>{item.title}</h3>
-              <p>{item.text}</p>
-            </article>
           ))}
         </div>
+        <div className="hiw-same">
+          {SAME.map(([t, d]) => <div key={t}><strong>✓ {t}</strong><span>{d}</span></div>)}
+        </div>
       </section>
 
-      {selectedNode && (
-        <SimulationModal
-          node={selectedNode}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
-    </>
+      <section className="hiw-panel">
+        <span className="hiw-eyebrow">POTENTIAL FUTURE EXTENSIONS</span>
+        <h2>Where this pipeline could go next.</h2>
+        <div className="hiw-future">{FUTURE.map(([t, d], i) => <article key={t}><span>0{i + 1}</span><h3>{t}</h3><p>{d}</p></article>)}</div>
+      </section>
+
+      {sel && <Expanded key={sel.id + sel.bad} id={sel.id} rect={sel.rect} startBad={sel.bad} onClose={() => setSel(null)} />}
+    </div>
   );
 }
