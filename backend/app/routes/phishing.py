@@ -1,5 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
+from backend.app.database import get_db
 from backend.app.schemas.phishing import (
     URLAnalysisRequest,
     URLAnalysisResponse,
@@ -24,6 +26,7 @@ bert_service = BERTService()
 )
 def analyze_url(
     request: URLAnalysisRequest,
+    db: Session = Depends(get_db),
 ):
     result = bert_service.predict(
         request.url
@@ -46,8 +49,8 @@ def analyze_url(
     else:
         stage2_access_token = (
             stage_flow_service
-            .create_stage2_access()
-        )
+            .create_stage2_access(db)
+    )
 
     return {
         **result,
